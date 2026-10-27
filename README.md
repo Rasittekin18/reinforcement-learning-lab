@@ -6,6 +6,10 @@
 ![OpenAI Gym](https://img.shields.io/badge/OpenAI-Gym-0081A7?logo=openai&logoColor=white)
 ![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-FF6F00?logo=tensorflow&logoColor=white)
 ![Pygame](https://img.shields.io/badge/Pygame-2.x-green?logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?logo=streamlit&logoColor=white)
+![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?logo=kotlin&logoColor=white)
+![Android](https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=white)
 ![NumPy](https://img.shields.io/badge/NumPy-013243?logo=numpy&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-teal)
 
@@ -38,6 +42,7 @@ flowchart TD
     B --> C["3. Deep Q-Networks (DQN)<br/>Neural Function Approximator &bull; Experience Replay &bull; Target Network<br/><b>CartPole-v0 &bull; LunarLander-v2</b>"]
     C --> D["4. Custom Environment Design<br/>Pygame Game Loop &bull; Sprite Hierarchy &bull; Gym Abstraction<br/><b>Falling Hazard Evade Game</b>"]
     D --> E["5. Deep Convolutional Q-Learning (DCQL)<br/>Raw Pixel Input &bull; Frame Stacking (40x40x4) &bull; Spatial CNN<br/><b>Atari Pong Simulation</b>"]
+    E --> F["6. Real-World Capstone: Smart Wake-Up Assistant<br/>Circadian Biology &bull; Anti-Hacking Reward Shaping &bull; Streamlit UI &bull; Native Kotlin Android<br/><b>Personal Adaptive Wake-Up AI</b>"]
 ```
 
 ---
@@ -50,6 +55,7 @@ flowchart TD
 | **02** | **Deep Q-Networks (DQN)** | Continuous state spaces, correlation breaking via Experience Replay, moving target solution. | OpenAI Gym `CartPole-v0/v1`, `LunarLander-v2` | [`/02-deep-q-networks-dqn`](./02-deep-q-networks-dqn) |
 | **03** | **Custom Environment Design** | Pygame game loops, physics & collision detection, Gym-compliant RL interface design. | Custom 2D Falling Obstacle Evade Game | [`/03-custom-environment-design`](./03-custom-environment-design) |
 | **04** | **Deep Convolutional Q-Learning** | Vision-based reinforcement learning from raw video streams, 4-frame stacking, spatial CNN. | Atari Pong 2D Simulation (`DCQL`) | [`/04-deep-convolutional-q-learning`](./04-deep-convolutional-q-learning) |
+| **05** | **Smart Wake-Up Assistant (Capstone)** | Biological circadian sleep dynamics, anti-hacking reward shaping, Streamlit interactive dashboard, zero-dependency Kotlin Android app. | Custom Gymnasium, PyTorch DQN, Streamlit, Native Android Kotlin | [`/05-smart-wake-up-assistant`](./05-smart-wake-up-assistant) |
 | **DOCS**| **Theoretical Handbook** | Comprehensive technical guide covering mathematical formulations, proofs, and interview Q&A. | Bellman, MDP, Experience Replay, CNN Vision | [`/docs/theoretical_foundations.md`](./docs/theoretical_foundations.md) |
 
 ---
@@ -105,6 +111,12 @@ python 03-custom-environment-design/pygame_custom_rl_game.py
 
 # Run Visual Deep Convolutional Q-Learning Pong
 python 04-deep-convolutional-q-learning/dcql_train.py
+
+# Run Capstone: Smart Wake-Up Assistant Streamlit Dashboard
+streamlit run 05-smart-wake-up-assistant/app.py
+
+# Run Capstone Automated PyTest Verification (11 Unit & Stress Tests)
+pytest 05-smart-wake-up-assistant/test_wake_up_project.py -v
 ```
 
 ---
