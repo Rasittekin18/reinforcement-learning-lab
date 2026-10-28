@@ -138,6 +138,16 @@ def test_agent_update_reduces_loss():
     assert not np.isnan(loss)
 
 
+def test_agent_epsilon_decay():
+    """Epsilon keşif oranının minimum sınırın altına düşmeden düzgün azaldığını doğrular."""
+    agent = DQNAgent(epsilon_start=1.0, epsilon_min=0.05, epsilon_decay=0.9)
+    agent.decay_epsilon()
+    assert abs(agent.epsilon - 0.9) < 1e-4
+    for _ in range(100):
+        agent.decay_epsilon()
+    assert abs(agent.epsilon - 0.05) < 1e-6
+
+
 def test_model_file_exists_and_loads():
     """Eğitilmiş model dosyasının diskte mevcut olduğunu ve yüklenebildiğini doğrular."""
     model_path = os.path.join(os.path.dirname(__file__), "models", "best_wake_up_agent.pth")
@@ -225,3 +235,95 @@ def test_agent_performance_metrics():
     assert avg_success >= 85.0, f"Başarı oranı beklenenden düşük: %{avg_success:.1f}"
     assert avg_inertia <= 30.0, f"Kullanıcılar fazla sersem uyanıyor: %{avg_inertia:.1f}"
     assert avg_snooze <= 0.25, f"Erteleme sayısı çok yüksek: {avg_snooze:.2f}"
+
+
+# =====================================================================
+# 4. ENTEGRASYON, MOBİL VE AĞIRLIK TESTLERİ
+# =====================================================================
+
+def test_env_render_modes():
+    """render() metodunun hem ansi hem de human modlarında düzgün çalıştığını doğrular."""
+    env = SmartWakeUpEnv(render_mode="ansi")
+    env.reset(seed=10)
+    output = env.render()
+    assert isinstance(output, str)
+    assert "Zaman:" in output
+    assert "Evre:" in output
+
+
+def test_agent_get_q_values():
+    """get_q_values metodunun doğru boyutta ve argmax'ı select_action ile eşleşen değerler ürettiğini doğrular."""
+    agent = DQNAgent(state_dim=7, action_dim=5)
+    model_path = os.path.join(os.path.dirname(__file__), "models", "best_wake_up_agent.pth")
+    agent.load(model_path)
+
+    sample_state = np.array([-0.5, 0.0, 0.6, 0.2, 0.0, 0.0, 7.0], dtype=np.float32)
+    q_vals = agent.get_q_values(sample_state)
+
+    assert isinstance(q_vals, np.ndarray)
+    assert q_vals.shape == (5,)
+    assert int(np.argmax(q_vals)) == agent.select_action(sample_state, evaluate=True)
+
+
+def test_traditional_vs_rl_evaluation():
+    """evaluate.py modülünün compare_systems fonksiyonunu ve RL ajanın üstünlüğünü doğrular."""
+    from evaluate import compare_systems
+    results = compare_systems(n_test=30, verbose=False)
+
+    trad = results["traditional"]
+    rl = results["rl"]
+
+    assert rl["success_rate"] >= trad["success_rate"]
+    assert rl["avg_snooze"] <= trad["avg_snooze"]
+    assert rl["avg_inertia"] < trad["avg_inertia"]
+
+
+def test_weight_files_consistency():
+    """PyTorch checkpoint, model_weights.json ve Android assets ağırlıklarının birebir eşleştiğini doğrular."""
+    import json
+    base_dir = os.path.dirname(__file__)
+    pth_path = os.path.join(base_dir, "models", "best_wake_up_agent.pth")
+    json_path = os.path.join(base_dir, "models", "model_weights.json")
+    android_json_path = os.path.join(base_dir, "android", "app", "src", "main", "assets", "model_weights.json")
+
+    assert os.path.exists(pth_path)
+    assert os.path.exists(json_path)
+    assert os.path.exists(android_json_path)
+
+    cp = torch.load(pth_path, map_location="cpu", weights_only=False)
+    state_dict = cp["policy_net_state_dict"]
+
+    with open(json_path, "r", encoding="utf-8") as f:
+        data1 = json.load(f)
+
+    with open(android_json_path, "r", encoding="utf-8") as f:
+        data2 = json.load(f)
+
+    for key in state_dict:
+        arr_pt = state_dict[key].numpy()
+        arr_j1 = np.array(data1[key], dtype=np.float32)
+        arr_j2 = np.array(data2[key], dtype=np.float32)
+
+        assert np.allclose(arr_pt, arr_j1, atol=1e-5), f"Ağırlık uyuşmazlığı ({key}) JSON vs PTH"
+        assert np.allclose(arr_j1, arr_j2, atol=1e-5), f"Ağırlık uyuşmazlığı ({key}) Android vs JSON"
+
+
+def test_mobile_pure_python_predict():
+    """mobile_alarm.py içindeki saf Python matris çıkarımının PyTorch ile aynı eylemleri seçtiğini doğrular."""
+    import mobile_alarm
+
+    sample_states = [
+        [-1.0, 0.0, 0.6, 0.0, 0.0, 0.0, 7.0],
+        [-0.5, 1.0, 0.4, 0.5, 0.0, 0.0, 7.0],
+        [0.0, 2.0, 0.3, 0.7, 0.3, 0.0, 7.0],
+        [0.2, 2.0, 0.2, 1.0, 0.7, 0.0, 7.0]
+    ]
+
+    agent = DQNAgent(state_dim=7, action_dim=5)
+    model_path = os.path.join(os.path.dirname(__file__), "models", "best_wake_up_agent.pth")
+    agent.load(model_path)
+
+    for st in sample_states:
+        pt_action = agent.select_action(np.array(st, dtype=np.float32), evaluate=True)
+        py_action = mobile_alarm.predict(st)
+        assert pt_action == py_action, f"Mobil ve PyTorch eylem uyuşmazlığı! PT: {pt_action}, Mobil: {py_action}"

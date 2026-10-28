@@ -115,7 +115,7 @@ python 04-deep-convolutional-q-learning/dcql_train.py
 # Run Capstone: Smart Wake-Up Assistant Streamlit Dashboard
 streamlit run 05-smart-wake-up-assistant/app.py
 
-# Run Capstone Automated PyTest Verification (11 Unit & Stress Tests)
+# Run Capstone Automated PyTest Verification (17 Unit & Stress Tests)
 pytest 05-smart-wake-up-assistant/test_wake_up_project.py -v
 ```
 

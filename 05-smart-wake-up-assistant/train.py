@@ -4,10 +4,55 @@ Ajanı 600 sabah simülasyonu boyunca eğitir, ödülleri kaydeder ve grafikleri
 """
 
 import os
+import json
+import shutil
 import numpy as np
+import torch
 import matplotlib.pyplot as plt
 from wake_up_env import SmartWakeUpEnv
 from dqn_agent import DQNAgent
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODELS_DIR = os.path.join(BASE_DIR, "models")
+PLOTS_DIR = os.path.join(BASE_DIR, "plots")
+ANDROID_ASSETS_DIR = os.path.join(BASE_DIR, "android", "app", "src", "main", "assets")
+
+
+def export_model_weights(agent, best_model_path):
+    """Eğitilmiş modelin ağırlıklarını TorchScript ve JSON formatında dışa aktarır."""
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    os.makedirs(ANDROID_ASSETS_DIR, exist_ok=True)
+
+    # 1. En iyi modeli yükle
+    if os.path.exists(best_model_path):
+        agent.load(best_model_path)
+
+    # 2. TorchScript (.pt) Dışa Aktarma
+    try:
+        agent.policy_net.eval()
+        example_input = torch.randn(1, agent.state_dim).to(agent.device)
+        traced_net = torch.jit.trace(agent.policy_net, example_input)
+        pt_path = os.path.join(MODELS_DIR, "wake_up_agent.pt")
+        traced_net.save(pt_path)
+        print(f"[EXPORT] TorchScript modeli '{pt_path}' kaydedildi.")
+    except Exception as e:
+        print(f"[EXPORT WARNING] TorchScript dışa aktarılamadı: {e}")
+
+    # 3. JSON Ağırlıkları (Sıfır bağımlılık / Android & Mobile)
+    state_dict = agent.policy_net.state_dict()
+    weights_dict = {}
+    for key, tensor in state_dict.items():
+        weights_dict[key] = tensor.cpu().numpy().tolist()
+
+    json_path = os.path.join(MODELS_DIR, "model_weights.json")
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(weights_dict, f)
+    print(f"[EXPORT] JSON ağırlıkları '{json_path}' kaydedildi.")
+
+    # Android assets ile senkronize et
+    android_json_path = os.path.join(ANDROID_ASSETS_DIR, "model_weights.json")
+    shutil.copyfile(json_path, android_json_path)
+    print(f"[EXPORT] Android assets senkronize edildi: '{android_json_path}'.")
 
 
 def train(episodes=600, render_every=100):
@@ -15,8 +60,11 @@ def train(episodes=600, render_every=100):
     print(">> Akilli Uyanma Asistani - DQN Egitimi Baslatiliyor")
     print("=" * 65)
 
-    os.makedirs("models", exist_ok=True)
-    os.makedirs("plots", exist_ok=True)
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    os.makedirs(PLOTS_DIR, exist_ok=True)
+
+    best_model_path = os.path.join(MODELS_DIR, "best_wake_up_agent.pth")
+    final_model_path = os.path.join(MODELS_DIR, "final_wake_up_agent.pth")
 
     env = SmartWakeUpEnv()
     agent = DQNAgent(
@@ -36,6 +84,7 @@ def train(episodes=600, render_every=100):
     snooze_history = []
     success_history = []
     avg_rewards_window = []
+    eps_history = []
 
     best_avg_reward = -float("inf")
 
@@ -55,6 +104,7 @@ def train(episodes=600, render_every=100):
             state = next_state
             episode_reward += reward
 
+        eps_history.append(agent.epsilon)
         agent.decay_epsilon()
 
         rewards_history.append(episode_reward)
@@ -79,7 +129,7 @@ def train(episodes=600, render_every=100):
         # En iyi modeli kaydet
         if episode >= 100 and current_avg_reward > best_avg_reward:
             best_avg_reward = current_avg_reward
-            agent.save("models/best_wake_up_agent.pth")
+            agent.save(best_model_path)
 
         # Bilgilendirme Çıktısı
         if episode % 25 == 0 or episode == 1:
@@ -94,8 +144,11 @@ def train(episodes=600, render_every=100):
 
     print("\n" + "=" * 65)
     print(f"[OK] Egitim Tamamlandi! En Yuksek Ortalama Odul: {best_avg_reward:.2f}")
-    agent.save("models/final_wake_up_agent.pth")
-    print("[MODEL] Model agirliklari 'models/best_wake_up_agent.pth' adresine kaydedildi.")
+    agent.save(final_model_path)
+    print(f"[MODEL] Model agirliklari '{best_model_path}' adresine kaydedildi.")
+
+    # Tüm formatları otomatik senkronize et
+    export_model_weights(agent, best_model_path)
 
     # --- Performans Grafiklerini Çiz ---
     plt.figure(figsize=(14, 8))
@@ -131,7 +184,6 @@ def train(episodes=600, render_every=100):
 
     # 4. Epsilon Azalma Grafiği
     plt.subplot(2, 2, 4)
-    eps_history = [max(0.05, 1.0 * (0.992 ** i)) for i in range(episodes)]
     plt.plot(eps_history, color='darkorange', linewidth=2)
     plt.title("Kesif Orani (Epsilon Decay)")
     plt.xlabel("Sabah Simulasyonu")
@@ -139,7 +191,7 @@ def train(episodes=600, render_every=100):
     plt.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    plot_path = "plots/training_results.png"
+    plot_path = os.path.join(PLOTS_DIR, "training_results.png")
     plt.savefig(plot_path, dpi=200)
     plt.close()
     print(f"[GRAFIK] Performans grafigi '{plot_path}' dosyasina kaydedildi.")

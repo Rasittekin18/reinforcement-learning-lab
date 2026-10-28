@@ -12,7 +12,7 @@ Ajan, kullanıcının hedef uyanma saatinden önceki 30-40 dakikalık zaman penc
 ## 🧭 Proje Fazları ve Yol Haritası (To-Do List)
 
 ```
-[Faz 1: Modelleme] ──► [Faz 2: Gym Ortamı] ──► [Faz 3: DQN Ajanı] ──► [Faz 4: Eğitim & Metrikler] ──► [Faz 5: Kıyaslama & Arayüz]
+[Faz 1: Modelleme] ──► [Faz 2: Gym Ortamı] ──► [Faz 3: DQN Ajanı] ──► [Faz 4: Eğitim & Metrikler] ──► [Faz 5: Kıyaslama & Arayüz] ──► [Faz 6: Mobil Dağıtım] ──► [Faz 7: Kapsamlı Testler]
 ```
 
 ### 📌 Faz 1: Problem Modellemesi ve Mimari Tasarım
@@ -43,6 +43,20 @@ Ajan, kullanıcının hedef uyanma saatinden önceki 30-40 dakikalık zaman penc
 - [x] **Klasik Alarm vs. RL Ajanı** karşılaştırmalı performans testi
 - [x] Tek bir sabahın adım adım zaman çizelgesi simülasyonu (Zaman, Işık, Ses, Uyku Durumu)
 - [x] Streamlit ile interaktif görsel demo (Kullanıcının kendi uyku saatini girip simüle edebileceği arayüz)
+- [x] İnteraktif Q-Değeri Deney Masası ve Canlı 100 Sabah Kıyaslama Testi
+
+### 📌 Faz 6: Mobil Dağıtım & Native Android Uygulaması (`android/` & `mobile_alarm.py`)
+- [x] JSON model ağırlıkları dışa aktarımı (`model_weights.json`)
+- [x] Pydroid 3 tek dosya saf Python uyanma motoru (`generate_mobile.py` & `mobile_alarm.py`)
+- [x] Native Kotlin Android Studio projesi (`WakeUpAgent.kt`, saf matris çıkarımı)
+- [x] Android `AlarmManager`, `WakeUpService` Foreground servisi ve gün doğumu kilit ekranı UI
+- [x] Android 13/14+ izin uyumlulukları (`SCHEDULE_EXACT_ALARM`, `POST_NOTIFICATIONS`, `USE_FULL_SCREEN_INTENT`)
+
+### 📌 Faz 7: Kapsamlı Test Paketi ve Doğrulama (`test_wake_up_project.py`)
+- [x] 17 adet otomatik PyTest birim ve stres testi
+- [x] Anti-hacking ceza doğrulaması ve politika dürüstlük kontrolleri
+- [x] Saf Python mobil çıkarım ile PyTorch tensör eşleşme doğrulaması
+- [x] JSON, PyTorch (.pth) ve Android Assets ağırlık senkronizasyon testleri
 
 ---
 

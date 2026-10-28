@@ -1,6 +1,10 @@
+import os
 import json
 
-with open("models/model_weights.json", "r", encoding="utf-8") as f:
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+weights_path = os.path.join(BASE_DIR, "models", "model_weights.json")
+
+with open(weights_path, "r", encoding="utf-8") as f:
     weights = json.load(f)
 
 weights_json_str = json.dumps(weights)
@@ -141,7 +145,8 @@ if __name__ == "__main__":
     main()
 '''
 
-with open("mobile_alarm.py", "w", encoding="utf-8") as out:
+out_path = os.path.join(BASE_DIR, "mobile_alarm.py")
+with open(out_path, "w", encoding="utf-8") as out:
     out.write(header + body)
 
-print("mobile_alarm.py successfully created!")
+print(f"mobile_alarm.py successfully created at {out_path}!")

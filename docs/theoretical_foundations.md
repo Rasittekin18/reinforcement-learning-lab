@@ -30,6 +30,11 @@ Bu doküman, Pekiştirmeli Öğrenme (Reinforcement Learning) disiplinindeki mat
 +---------------------------------------------------------------------------------------------------+
 | 5. Deep Convolutional Q-Learning - DCQL (CNN, Frame Stacking, Piksel Girdisi | Proje: Atari Pong) |
 +---------------------------------------------------------------------------------------------------+
+                                                  │
+                                                  ▼
++---------------------------------------------------------------------------------------------------+
+| 6. Bitirme Projesi: Akıllı Uyanma Asistanı (Sirkadiyen Biyoloji, Anti-Hacking, Streamlit & Android)|
++---------------------------------------------------------------------------------------------------+
 ```
 
 ---
@@ -87,23 +92,44 @@ $$Q(s, a) \leftarrow Q(s, a) + \alpha \left[ R + \gamma \max_{a'} Q(s', a') - Q(
 * **Durum Uzayı (State Space):** 500 durum ($5 \times 5 \text{ ızgara} \times 5 \text{ yolcu konumu} \times 4 \text{ hedef} = 500$).
 * **Eylemler (Action Space - 6 Adet):** 0: Güney, 1: Kuzey, 2: Doğu, 3: Batı, 4: Yolcu Al (Pickup), 5: Yolcu Bırak (Dropoff).
 * **Ödüller:** Başarılı bırakma: `+20`, Yanlış bırakma/alma: `-10`, Her geçen adım (Living penalty): `-1`.
+* **Kritik Kod Yapısı:**
+  ```python
+  q_table = np.zeros([env.observation_space.n, env.action_space.n])
+  for episode in range(10000):
+      state = env.reset()
+      while True:
+          if random.uniform(0, 1) < epsilon:
+              action = env.action_space.sample() # Explore
+          else:
+              action = np.argmax(q_table[state]) # Exploit
+          
+          next_state, reward, done, _ = env.step(action)
+          
+          # Q-Learning formülü
+          old_val = q_table[state, action]
+          next_max = np.max(q_table[next_state])
+          q_table[state, action] = (1 - alpha) * old_val + alpha * (reward + gamma * next_max)
+          
+          state = next_state
+          if done: break
+  ```
 
-#### 2) FrozenLake-v0 / FrozenLake-v1 (Buz Gölü)
+#### 2) FrozenLake-v0 (Buz Gölü)
 * **Harita:** 4x4 matris. S: Başlangıç, F: Donmuş zemin, H: Delik (Ölüm, reward=0), G: Hedef (Başarı, reward=1).
-* **Zorluk:** `is_slippery=True` iken ortam stokastiktir. Ajan hedefe giderken kayıp deliğe düşebilir. Çözüm için optimize edilmiş $\gamma, \alpha$ parametreleri ve yeterli bölüm sayısı kullanılır.
+* **Zorluk:** `is_slippery=True` iken ortam stokastiktir. Ajan hedefe giderken kayıp deliğe düşebilir. Çözüm için daha yüksek bölüm sayısı (örn: 75.000) ve optimize edilmiş $\gamma, \alpha$ parametreleri kullanılır.
 
 ---
 
 ## BÖLÜM 3: Deep Q-Learning (DQL - Derin Q-Öğrenme)
 
 ### 3.1. Neden Deep Q-Learning? (Boyut Laneti - Curse of Dimensionality)
-Tabular Q-learning'de her durum bir satırdır. Ancak durumlar sürekli (continuous) olduğunda veya durum uzayı çok büyüdüğünde tablo tutmak imkansızdır.
+Tabular Q-learning'de her durum bir satırdır. Ancak durumlar sürekli (continuous) olduğunda (örn: açı $0.1523^\circ$, hız $1.432$ m/s) veya durum uzayı trilyonları bulduğunda tablo tutmak imkansızdır.
 **Çözüm:** Q-tablosu yerine bir **Yapay Sinir Ağı (ANN)** kullanarak durum vektöründen ($S$) tüm eylemlerin tahmini Q değerlerini ($Q(s, a)$) çıktı olarak üreten bir fonksiyon yaklaşıklayıcı (Function Approximator) inşa etmektir.
 
 ### 3.2. DQL'in İki Temel Kararsızlık Sorunu ve Çözümleri
 1. **Experience Replay (Deneyim Tekrarı):**
    * *Problem:* Ajan ardışık adımlarda öğrendikçe veriler zaman içinde birbiriyle yüksek derecede ilişkili (correlated) olur. Bu da ağın ağırlıklarını saptırır.
-   * *Çözüm:* Geçişler `(state, action, reward, next_state, done)` bir hafızada (`collections.deque`) saklanır. Eğitim sırasında bu hafızadan rastgele küçük gruplar (`minibatch`) çekilerek veri bağımlılığı kırılır.
+   * *Çözüm:* Geçişler `(state, action, reward, next_state, done)` bir hafızada (`collections.deque`) saklanır. Eğitim sırasında bu hafızadan rastgele küçük gruplar (`minibatch`, örn: 16 veya 32) çekilerek veri bağımlılığı kırılır.
 2. **Target Network (Hedef Ağ Çözümü - Moving Target Problem):**
    * *Problem:* Ağ kendi tahmin ettiği değerleri yine kendi güncel ağırlıklarıyla hesaplanan hedeflere uydurmaya çalışırsa hedef sürekli hareket eder ve model ıraksar.
    * *Çözüm:* Biri anlık eğitilen (`model`), diğeri ağırlıkları periyodik olarak kopyalanan (`target_model`) iki ayrı ağ kullanılır.
@@ -111,19 +137,23 @@ Tabular Q-learning'de her durum bir satırdır. Ancak durumlar sürekli (continu
 
 ### 3.3. Adaptive Epsilon-Greedy
 Ajan başlangıçta çevreyi tanımak için çok keşif yapmalı ($\epsilon = 1.0$), öğrendikçe sömürüye geçmelidir:
-$$\epsilon \leftarrow \max(\epsilon_{min}, \epsilon \times \epsilon_{decay})$$
+$$\epsilon \leftarrow \max(\epsilon_{min}, \epsilon \times \epsilon_{decay}) \quad (\text{Örn: } \epsilon_{decay} = 0.995, \epsilon_{min} = 0.01)$$
 
 ### 3.4. DQL Projeleri
 
-#### 1) CartPole-v0 / v1 (Ters Sarkaç Dengeleme)
+#### 1) CartPole-v0 (Ters Sarkaç Dengeleme)
 * **Amaç:** Hareketli bir araba üzerindeki dik çubuğu devirmeden dengede tutmak.
 * **Gözlem (4 Değer):** Araba konumu, araba hızı, çubuk açısı, çubuk açısal hızı.
 * **Eylemler (2 Adet):** 0: Sola it, 1: Sağa it.
+* **Ağ Mimarisi:**
+  * Giriş: `Dense(48, input_dim=4, activation='tanh')`
+  * Çıkış: `Dense(2, activation='linear')`
+  * Kayıp / Optimizasyon: MSE + Adam optimizer (`lr=0.001`).
 
 #### 2) LunarLander-v2 (Ay Modülü İnişi)
 * **Gözlem (8 Boyutlu Vektör):** Koordinatlar, hızlar, açı, bacakların yere temas durumu.
 * **Eylemler (4 Adet):** Hiçbir şey yapma, sol motor, ana motor, sağ motor.
-* **Önemli İyileştirme:** Vektörize edilmiş replay metodu ve `target_model` kullanımı.
+* **Önemli İyileştirme:** Vektörize edilmiş (hızlı numpy) replay metodu ve `target_model` kullanımı.
 
 ---
 
@@ -133,7 +163,7 @@ Her problem için hazır OpenAI Gym ortamı bulunmaz. Bu modülde **Pygame** kul
 
 ### 4.1. Pygame Oyun Geliştirme Mimarisi
 Bir oyunun temel omurgası **Game Loop** (Oyun Döngüsü) mimarisidir:
-1. **Process Input (Girdi Toplama):** Ajanın eylemleri veya klavye/fare girdileri.
+1. **Process Input (Girdi Toplama):** Klavye/fare veya Ajanın eylemleri.
 2. **Update Game (Durum Güncelleme):** Varlıkların konumlarını, hızlarını ve çarpışmalarını güncelleme.
 3. **Render / Draw (Ekrana Çizme):** Kareyi çizme ve ekrana yansıtma (`pygame.display.flip()`).
 4. **Clock Tick:** FPS kontrolü (`clock.tick(30)`).
@@ -147,31 +177,80 @@ Bir oyunun temel omurgası **Game Loop** (Oyun Döngüsü) mimarisidir:
 * **Oyun Mantığı:** Aşağıda duran bir Ajan (`Player`), yukarıdan rastgele koordinatlardan düşen 2 adet düşmandan (`Enemy`) kaçmaya çalışır.
 * **State Vektörü (4 Eleman):**
   $$S = [\Delta X_1, \Delta Y_1, \Delta X_2, \Delta Y_2]$$
-* **Eylem Uzayı (3 Eylem):** 0: Sola git, 1: Sağa git, 2: Dur.
-* **Ödül Tasarımı:** Hayatta kalınan her an: `+2` ödül, düşmana çarpıldığında: `-150` ceza.
+  Ajanın 1. ve 2. düşmana olan yatay ve dikey uzaklıkları ($X_{player} - X_{enemy}$, $Y_{player} - Y_{enemy}$).
+* **Eylem Uzayı (3 Eylem):** 0: Sola git (-4 px), 1: Sağa git (+4 px), 2: Dur (0 px).
+* **Ödül Tasarımı:**
+  * Hayatta kalınan her an: `+2` ödül.
+  * Düşmana çarpıldığında: `-150` ceza ve bölüm sonu (`done = True`).
+* **RL Entegrasyonu:** `Env` sınıfı `step(action)` ve `initialStates()` metotlarıyla OpenAI Gym benzeri bir arayüz sunar ve DQL Agent bu ortamı kendi kendine oynayarak düşmanlardan kaçmayı öğrenir.
 
 ---
 
 ## BÖLÜM 5: Deep Convolutional Q-Learning (DCQL - Görsel Girdili Derin RL)
 
 ### 5.1. Neden CNN (Evrişimli Sinir Ağları)?
-Durum uzayı sayısal koordinatlar yerine **ham piksel matrislerinden** oluştuğunda normal yoğun (Dense) ağlar piksel ilişkilerini ve mekansal (spatial) özellikleri kaybeder. CNN katmanları pikseller arasındaki kenar, şekil ve konum ilişkilerini öğrenir.
+Durum uzayı sayısal koordinatlar yerine **ham piksel matrislerinden (ekran görüntüsü)** oluştuğunda normal yoğun (Dense) ağlar piksel ilişkilerini ve mekansal (spatial) özellikleri kaybeder. CNN katmanları pikseller arasındaki kenar, şekil ve konum ilişkilerini öğrenir.
 
 ### 5.2. Ham Görüntü Ön İşleme (Preprocessing Hattı)
-`skimage` ile şu adımlar uygulanır:
-1. **Griye Dönüştürme (`rgb2gray`):** Renk bilgisi elenir; boyut 3 kanaldan 1 kanala iner.
-2. **Kırpma (Cropping):** Skor tablosu gibi gereksiz bölgeler kırpılır (400x400).
+Oyun ekranı çok büyük ve gereksiz renk detaylarıyla doludur. `skimage` ile şu adımlar uygulanır:
+1. **Griye Dönüştürme (`rgb2gray`):** Renk bilgisi gereksizdir; boyut 3 kanaldan 1 kanala iner.
+2. **Kırpma (Cropping):** Skor tablosu gibi gereksiz bölgeler kırpılır (örn: 400x400).
 3. **Yeniden Boyutlandırma (Resize):** Modelin hızlı eğitilmesi için görüntü 40x40 piksele küçültülür.
 4. **Normalizasyon:** Görüntü matrisi piksel yoğunluklarına göre normalize edilir ($/ 128$).
 
 ### 5.3. Frame Stacking (Kare İstifleme) ve Zamansal Dinamikler
-Tek bir durağan kare nesnelerin hızını ve hareket yönünü vermez. Son 4 kare (`IMGHISTORY = 4`) kanal boyutunda üst üste istiflenir: $\text{Girdi Boyutu} = (40, 40, 4)$. Böylece evrişim katmanları topun yönünü ve ivmesini yakalar.
+* **Kritik Kavram:** Tek bir durağan kareye bakarak tenis topunun **nereye doğru gittiğini** veya **hızını** anlayamazsınız.
+* **Çözüm:** Son 4 kare (`IMGHISTORY = 4`) kanal boyutunda üst üste istiflenir:
+  $$\text{Girdi Boyutu} = (40, 40, 4)$$
+  Böylece evrişim katmanları topun yönünü ve ivmesini pikseller arasındaki değişimden yakalar.
 
 ### 5.4. DCQL Mimarisi ve Pong Projesi
-* **Ortam:** Klasik Pong oyunu. Sol raket Ajan, sağ raket kural tabanlı yapay zeka.
+* **Ortam:** Klasik Pong (Tenis) oyunu. Sol raket Ajan, sağ raket kural tabanlı yapay zeka.
 * **Eylemler (3 Adet):** 0: Sabit dur, 1: Yukarı hareket et, 2: Aşağı hareket et.
 * **Ödüller:** Topu karşılayıp vurunca `+10`, top kaçırılınca `-10`, her geçen kare `-0.05`.
-* **Gözlem Süresi (Observe Period):** İlk adımlarda model eğitilmez (`OBSERVEPERIOD = 2000`), rastgele hamlelerle replay hafızası doldurulur. Ardından $\epsilon$ kademeli olarak düşürülür.
+* **CNN Mimarisi:**
+  1. `Conv2D(32, kernel=(4,4), strides=(2,2), padding="same", activation="relu")`
+  2. `Conv2D(64, kernel=(4,4), strides=(2,2), padding="same", activation="relu")`
+  3. `Conv2D(64, kernel=(3,3), strides=(1,1), padding="same", activation="relu")`
+  4. `Flatten()` $\to$ `Dense(512, activation="relu")`
+  5. `Dense(3, activation="linear")`
+* **Gözlem Süresi (Observe Period):** İlk 2.000 adımda model ağırlıkları eğitilmez (`OBSERVEPERIOD = 2000`), sadece rastgele hamlelerle replay hafızası doldurulur. Ardından $\epsilon$ kademeli olarak $1.0 \to 0.05$ seviyesine kadar düşürülür.
+
+---
+
+## BÖLÜM 6: Bitirme Projesi - Pekiştirmeli Öğrenme ile Akıllı Uyanma Asistanı (Capstone)
+
+### 6.1. Problem Tanımı ve Biyolojik Gerçeklik
+Geleneksel saat alarmları kullanıcının uyku evresini (Derin Uyku, Hafif Uyku, REM) gözetmeksizin doğrudan ses çıkarır. Kullanıcı derin uykudayken uyarılırsa şiddetli **uyku sersemliği (sleep inertia)** yaşar ve kronik **erteleme (snooze)** döngüsüne girer.
+
+### 6.2. MDP ve Anti-Hacking Ödül Modellemesi
+* **Durum Uzayı ($S \in \mathbb{R}^7$):**
+  1. `norm_time_to_target`: Hedefe kalan süre (-30 dk ile +15 dk arası normalize edilmiş).
+  2. `sleep_stage`: Anlık uyku evresi (0: Derin, 1: Hafif, 2: Yarı Uyanık, 3: Kalktı).
+  3. `sleep_inertia`: Kalan uyku sersemliği katsayısı ($0.0 \sim 1.0$).
+  4. `light_level`: Ortam/ekran ışığı seviyesi ($0.0 \sim 1.0$).
+  5. `sound_level`: Ses düzeyi ($0.0 \sim 1.0$).
+  6. `snooze_count`: Kümülatif erteleme sayısı ($0 \sim 5$).
+  7. `total_sleep_hours`: Gece uyunan toplam süre (Domain randomization: $4.5 \sim 8.5$ saat).
+* **Eylem Uzayı ($A \in \{0, 1, 2, 3, 4\}$):**
+  * `0: Bekle (Do Nothing)` - Uyku döngüsünü bölme.
+  * `1: Işığı Kademeli Artır` - Melatonin hormonunu baskılayıp derin uykudan hafife geçiş sağla.
+  * `2: Hafif Melodi / Doğa Sesi` - Yarı uyanıklığa yumuşak geçiş.
+  * `3: Standart Alarm` - Ritmik ses ile uyandır.
+  * `4: Agresif Mod` - Maksimum ses ve ışık (Yalnızca acil son çare).
+* **Anti-Hacking Ödül Fonksiyonu ($R$):**
+  * Hedef saat penceresinde (-5 ile +5 dk) kalkış: `+120`
+  * Erken agresif mod açma cezası ($t < 0$): `-45` (Ajan insanı gürültüyle terörize edemez)
+  * Erken standart alarm cezası ($t < -15$): `-25`
+  * Erteleme (snooze) cezası: `-15` / kez
+  * Dinç kalkma bonusu: `+(1 - Inertia) * 40`
+  * Sıfır erteleme bonusu: `+30`
+
+### 6.3. Çok Platformlu Dağıtım ve Entegrasyon
+1. **PyTorch DQN Ajanı:** Target network + Huber Loss + Experience Replay (20.000 bellek).
+2. **Streamlit İnteraktif Dashboard:** Canlı simülasyon, Q-değeri açıklanabilirlik masası ve 100 sabah kıyaslama testi.
+3. **Pydroid 3 Tek Dosya Mobil:** Saf Python matris çıkarımı ile harici kütüphane gerektirmeyen bağımsız çalıştırma.
+4. **Native Android (Kotlin):** 0.05 ms çıkarım süreli saf Kotlin matris motoru, AlarmManager, Foreground Service ve gün doğumu kilit ekranı arayüzü.
 
 ---
 
@@ -182,10 +261,11 @@ Tek bir durağan kare nesnelerin hızını ve hareket yönünü vermez. Son 4 ka
 | **Q-Learning** | Ayrık Sayılar / İndeksler (Örn: 0-499) | 2 Boyutlu Dizi ($|S| \times |A|$) | Gerek yok | Küçük, ayrık durum uzayları | Taxi-v2, FrozenLake |
 | **Deep Q-Learning (DQL)** | Sürekli Vektörler (Örn: Açı, Hız, Mesafe) | Çok Katmanlı İleri Beslemeli ANN | Experience Replay (`deque`) | Sürekli/büyük durum uzayları | CartPole, LunarLander, Kaçış Oyunu |
 | **Deep Conv Q-Learning (DCQL)** | Piksel Kareleri Matrisi (Örn: $40 \times 40 \times 4$) | Evrişimli Sinir Ağı (CNN) | Experience Replay (`deque`) | Görsel ekran girdisiyle oynanan oyunlar | Atari Pong |
+| **Smart Wake-Up (Capstone DQN)** | Biyolojik & Zamansal 7 Boyutlu Vektör | PyTorch DQN + Saf Mobil Matris | Experience Replay (20k) | Gerçek Dünya Biyomedikal Karar Destek | Akıllı Uyanma Asistanı (Android & Streamlit) |
 
 ---
 
-## ⚡ Mülakat ve Teknik Değerlendirme Hazırlığı
+## ⚡ Hızlı Tekrar ve Mülakat Hazırlığı (Kritik Soru - Cevap)
 
 **S1: Bellman Denklemi sezgisel olarak ne anlatır?**  
 > *"Bugünkü bir eylemin değeri, o eylemden anında aldığın ödül ile gelecekte ulaşacağın en iyi durumun bugüne indirimli değerinin toplamıdır."*

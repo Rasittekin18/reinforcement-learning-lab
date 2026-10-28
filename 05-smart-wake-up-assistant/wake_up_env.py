@@ -234,4 +234,8 @@ class SmartWakeUpEnv(gym.Env):
         stage_names = ["[DERIN UYKU]", "[HAFIF UYKU]", "[YARI UYANIK]", "[YATAKTAN KALKTI]"]
         curr_stage = stage_names[self.sleep_stage]
         time_str = f"{self.time_to_target:+d} dk"
-        print(f"[Zaman: {time_str:>7}] | Evre: {curr_stage:<18} | Isik: %{int(self.light_level*100):<3} | Ses: %{int(self.sound_level*100):<3} | Snooze: {self.snooze_count} | Sersemlik: %{int(self.sleep_inertia*100)}")
+        output = f"[Zaman: {time_str:>7}] | Evre: {curr_stage:<18} | Isik: %{int(self.light_level*100):<3} | Ses: %{int(self.sound_level*100):<3} | Snooze: {self.snooze_count} | Sersemlik: %{int(self.sleep_inertia*100)}"
+        if self.render_mode == "ansi":
+            return output
+        print(output)
+        return output

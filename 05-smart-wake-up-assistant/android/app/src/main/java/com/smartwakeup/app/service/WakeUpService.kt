@@ -96,7 +96,17 @@ class WakeUpService : Service() {
 
                 // Kullanıcı kalktıysa veya süre bittiyse durdur
                 if (sleepStage == 3 || timeToTarget >= 15) {
-                    // Süreç bitti
+                    val statusText = if (sleepStage == 3) {
+                        "Tebrikler! Yataktan kalktınız. Dinç bir gün dileriz!"
+                    } else {
+                        "Süre doldu. Lütfen yataktan kalkınız!"
+                    }
+                    val manager = getSystemService(NotificationManager::class.java)
+                    manager?.notify(NOTIFICATION_ID, buildNotification(statusText))
+                    // 60 saniye sonra alarm sesini durdurup servisi otomatik temizle
+                    handler?.postDelayed({
+                        stopWakeUpProcess()
+                    }, 60 * 1000L)
                 } else {
                     // Bir sonraki adım (Gerçekte 5 dakika, testte hızlı ilerletilebilir)
                     handler?.postDelayed(this, 5 * 60 * 1000L)

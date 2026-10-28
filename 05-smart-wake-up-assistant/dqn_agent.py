@@ -148,6 +148,13 @@ class DQNAgent:
 
         return loss.item()
 
+    def get_q_values(self, state):
+        """Tüm eylemler için Q değerlerini numpy dizisi olarak döndürür."""
+        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+        with torch.no_grad():
+            q_values = self.policy_net(state_tensor)
+        return q_values.squeeze(0).cpu().numpy()
+
     def decay_epsilon(self):
         """Epsilon değerini kademeli olarak azaltır."""
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
@@ -162,7 +169,10 @@ class DQNAgent:
 
     def load(self, filepath):
         """Kaydedilmiş ağırlıkları yükler."""
-        checkpoint = torch.load(filepath, map_location=self.device)
+        try:
+            checkpoint = torch.load(filepath, map_location=self.device, weights_only=False)
+        except TypeError:
+            checkpoint = torch.load(filepath, map_location=self.device)
         self.policy_net.load_state_dict(checkpoint['policy_net_state_dict'])
         self.target_net.load_state_dict(checkpoint['target_net_state_dict'])
         self.epsilon = checkpoint.get('epsilon', self.epsilon_min)

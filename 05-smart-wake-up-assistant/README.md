@@ -47,9 +47,20 @@ python train.py
 python evaluate.py
 ```
 
-### 3. İnteraktif Web Arayüzünü Başlatma (Streamlit):
+### 3. Otomatik Test Paketini Çalıştırma (17 Adet Birim & Stres Testi):
+```bash
+pytest test_wake_up_project.py -v
+```
+
+### 4. İnteraktif Web Arayüzünü Başlatma (Streamlit Dashboard & Q-Explorer):
 ```bash
 streamlit run app.py
+```
+
+### 5. Sıfır Bağımlılık Mobil / Pydroid 3 Sürümü:
+```bash
+python generate_mobile.py
+python mobile_alarm.py
 ```
 
 ---
@@ -60,11 +71,14 @@ streamlit run app.py
 │
 ├── README.md                    # Proje tanıtım ve dokümantasyon
 ├── PROJE_PLANI_VE_TODO.md       # Adım adım faz takip listesi
-├── wake_up_env.py               # Gymnasium özel simülasyon ortamı
-├── dqn_agent.py                 # PyTorch DQN & Replay Buffer mimarisi
-├── train.py                     # Modeli 500 sabah simülasyonunda eğiten script
+├── wake_up_env.py               # Gymnasium özel simülasyon ortamı (Biyolojik uyku dinamikleri)
+├── dqn_agent.py                 # PyTorch DQN, Replay Buffer & Target Network mimarisi
+├── train.py                     # 600 sabah simülasyonunda model eğitimi ve ağırlık dışa aktarımı
 ├── evaluate.py                  # Klasik alarm vs. DQN kıyaslama scripti
-├── app.py                       # Streamlit görsel web arayüzü
+├── app.py                       # Streamlit görsel web arayüzü ve Q-değeri açıklanabilirlik masası
+├── test_wake_up_project.py      # 17 adet kapsamlı birim, stres, mobil ve ağırlık tutarlılık testi
+├── generate_mobile.py           # Saf Python / Pydroid 3 tek dosya mobil betiği üreticisi
+├── mobile_alarm.py              # Harici kütüphane gerektirmeyen bağımsız mobil uyanma scripti
 ├── models/                      # Eğitilmiş PyTorch (.pth), TorchScript (.pt) ve JSON ağırlıkları
 ├── plots/                       # Eğitim analiz ve performans grafikleri
 └── android/                     # Tam teşekküllü Native Kotlin Android Studio projesi

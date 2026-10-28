@@ -47,8 +47,9 @@ class WakeUpAgent(context: Context) {
      * assets/model_weights.json dosyasından ağırlıkları yükler.
      */
     private fun loadWeightsFromAssets(context: Context) {
-        val inputStream = context.assets.open("model_weights.json")
-        val jsonString = InputStreamReader(inputStream).readText()
+        val jsonString = context.assets.open("model_weights.json").use { inputStream ->
+            InputStreamReader(inputStream, Charsets.UTF_8).readText()
+        }
         val json = JSONObject(jsonString)
 
         // w1 & b1 (net.0)
